@@ -22,8 +22,7 @@ CREATE TABLE reviews (
   body VARCHAR(1000),
   date TIMESTAMP,
   reviewer_name VARCHAR(25),
-  helpfulness INTEGER,
-  email VARCHAR(35)
+  helpfulness INTEGER
 );
 
 CREATE TABLE characteristics (
