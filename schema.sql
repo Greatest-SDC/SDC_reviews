@@ -1,13 +1,20 @@
-CREATE TABLE IF NOT EXISTS product_id (
+DROP TABLE products;
+DROP TABLE reviews;
+DROP TABLE characteristics;
+DROP TABLE reviews_photos;
+
+CREATE TABLE products (
   id SERIAL PRIMARY KEY,
   product VARCHAR(6) NOT NULL,
   ratings JSONB,
   recommended JSONB
 );
 
-CREATE TABLE IF NOT EXISTS results (
-  id SERIAL REFERENCES product_id (id),
-  review_id INTEGER PRIMARY KEY NOT NULL,
+CREATE TABLE reviews (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER,
+  FOREIGN KEY (product_id) REFERENCES products (id),
+  review_id INTEGER,
   rating INTEGER,
   summary VARCHAR(50),
   recommended BOOLEAN,
@@ -16,27 +23,22 @@ CREATE TABLE IF NOT EXISTS results (
   date TIMESTAMP,
   reviewer_name VARCHAR(25),
   helpfulness INTEGER,
-  email VARCHAR(35),
-  photos INTEGER,
-  characteristics INTEGER,
-  CONSTRAINT fk_all_photos
-    FOREIGN KEY (review_id)
-      REFERENCES photos_table (photo_id),
-  CONSTRAINT fk_all_characteristics
-    FOREIGN KEY (review_id)
-      REFERENCES characteristics_table (characteristics_id)
+  email VARCHAR(35)
 );
 
-CREATE TABLE IF NOT EXISTS characteristics_table (
-  id INTEGER REFERENCES product_id,
-  review_id INTEGER REFERENCES results,
+CREATE TABLE characteristics (
+  id SERIAL PRIMARY KEY,
+  product_id INTEGER,
+  FOREIGN KEY (product_id) REFERENCES products (id),
   characteristics_name VARCHAR(7),
   characteristics_id INTEGER,
   value VARCHAR(18)
 );
 
-CREATE TABLE IF NOT EXISTS photos_table (
-  review_id INTEGER REFERENCES results,
+CREATE TABLE reviews_photos (
+  id SERIAL PRIMARY KEY,
+  review_id INTEGER,
+  FOREIGN KEY (review_id) REFERENCES reviews (id),
   photo_id INTEGER,
   url VARCHAR(100)
 );
