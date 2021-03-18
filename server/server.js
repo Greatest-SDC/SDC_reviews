@@ -22,10 +22,27 @@ app.use(express.json());
 //==========================================================
 //The below works, but need to have photos be in a key-value pair like this - 'photos': {id: INT, url: STRING}
 //Also need to set up query parameters for parent object of nested results array including page, count, sort, and product_id
+//Look up ORDER BY to handle sort portion of request
+
+// const reviewsResultsArrayBuilder = (num) => {
+
+//   database.query(`SELECT reviews.review_id, reviews.rating, reviews.summary, reviews.recommend, reviews.response, reviews.body, reviews.date, reviews.reviewer_name, reviews.helpfulness, reviews_photos.id, reviews_photos.url FROM reviews LEFT JOIN reviews_photos ON reviews_photos.review_id = reviews.review_id WHERE reviews.product = ${num}`, (err, data) => {
+//     if (err) {
+//       console.log(err);
+//     } else {
+//       const results = data.rows;
+//       console.log(results);
+//     }
+//   });
+// }
+
+// app.get('/reviews', (req, res) => {
+//   reviewsResultsArrayBuilder(15);
+// });
 
 const reviewsResultsArrayBuilder = (num) => {
 
-  database.query(`SELECT reviews.review_id, reviews.rating, reviews.summary, reviews.recommend, reviews.response, reviews.body, reviews.date, reviews.reviewer_name, reviews.helpfulness, reviews_photos.id, reviews_photos.url FROM reviews LEFT JOIN reviews_photos ON reviews_photos.review_id = reviews.review_id WHERE reviews.product = ${num}`, (err, data) => {
+  database.query(`SELECT reviews.review_id, reviews.rating, reviews.summary, reviews.recommend, reviews.response, reviews.body, reviews.date, reviews.reviewer_name, reviews.helpfulness, ARRAY_AGG (reviews_photos.id || ' ' || reviews_photos.url) photos FROM reviews LEFT JOIN reviews_photos ON reviews_photos.review_id = reviews.review_id WHERE reviews.product = ${num} GROUP BY reviews.review_id`, (err, data) => {
     if (err) {
       console.log(err);
     } else {
