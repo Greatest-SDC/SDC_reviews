@@ -1,19 +1,19 @@
-DROP TABLE reviews;
-DROP TABLE characteristics;
-DROP TABLE characteristic_reviews;
-DROP TABLE reviews_photos;
+DROP TABLE IF EXISTS characteristic_reviews;
+DROP TABLE IF EXISTS reviews_photos;
+DROP TABLE IF EXISTS characteristics;
+DROP TABLE IF EXISTS reviews;
 
 CREATE TABLE reviews (
   id SERIAL PRIMARY KEY,
   product_id INTEGER,
   rating INTEGER,
   date TIMESTAMP,
-  summary VARCHAR(50),
+  summary VARCHAR(150),
   body VARCHAR(1000),
-  recommended BOOLEAN,
+  recommend BOOLEAN,
   reported BOOLEAN,
-  reviewer_name VARCHAR(25),
-  reviewer_email VARCHAR(35),
+  reviewer_name VARCHAR(35),
+  reviewer_email VARCHAR(50),
   response VARCHAR(1000),
   helpfulness INTEGER
 );
@@ -21,7 +21,6 @@ CREATE TABLE reviews (
 CREATE TABLE characteristics (
   id SERIAL PRIMARY KEY,
   product_id INTEGER,
-  FOREIGN KEY (product_id) REFERENCES reviews (product_id),
   name VARCHAR(7)
 );
 
@@ -38,5 +37,9 @@ CREATE TABLE reviews_photos (
   id SERIAL PRIMARY KEY,
   review_id INTEGER,
   FOREIGN KEY (review_id) REFERENCES reviews (id),
-  url VARCHAR(100)
+  url VARCHAR(200)
 );
+
+-- CREATE INDEX product_id_string ON reviews (
+--   product_id DESC
+-- );
