@@ -26,7 +26,36 @@ app.use(express.json());
 
 const reviewsResultsArrayBuilder = (num) => {
 
-  database.query(`SELECT reviews.review_id, reviews.rating, reviews.summary, reviews.recommend, reviews.response, reviews.body, reviews.date, reviews.reviewer_name, reviews.helpfulness, ARRAY_AGG (reviews_photos.id || ' ' || reviews_photos.url) photos FROM reviews LEFT JOIN reviews_photos ON reviews_photos.review_id = reviews.review_id WHERE reviews.product = ${num} GROUP BY reviews.review_id`, (err, data) => {
+//   database.query(`SELECT reviews.review_id, reviews.rating, reviews.summary, reviews.recommend, reviews.response, reviews.body, reviews.date, reviews.reviewer_name, reviews.helpfulness, ARRAY_AGG (reviews_photos.id || ' ' || reviews_photos.url) photos FROM reviews LEFT JOIN reviews_photos ON reviews_photos.review_id = reviews.review_id WHERE reviews.product = ${num} GROUP BY reviews.review_id`, (err, data) => {
+//     if (err) {
+//       console.log(err);
+//     } else {
+//       const results = data.rows;
+//       console.log(results);
+//     }
+//   });
+// }
+
+// app.get('/reviews', (req, res) => {
+//   reviewsResultsArrayBuilder(15);
+// });
+
+// reviews.review_id, reviews.rating, reviews.summary, reviews.recommend, reviews.response, reviews.body, reviews.date, reviews.reviewer_name, reviews.helpfulness,
+// (SELECT ARRAY_TO_JSON(ARRAY_AGG (reviews_photos.id || ' ' || reviews_photos.url))) photos
+// FROM reviews
+// LEFT JOIN reviews_photos
+// ON reviews_photos.review_id = reviews.review_id
+// WHERE reviews.product = ${num}
+// GROUP BY reviews.review_id`
+
+database.query(
+  `SELECT JSON_BUILD_OBJECT(
+    'id', id,
+    'url', url
+  ) AS photos
+  FROM reviews_photos
+  WHERE reviews_photos.review_id = ${num}
+  GROUP BY id`, (err, data) => {
     if (err) {
       console.log(err);
     } else {
@@ -37,11 +66,15 @@ const reviewsResultsArrayBuilder = (num) => {
 }
 
 app.get('/reviews', (req, res) => {
-  reviewsResultsArrayBuilder(15);
+reviewsResultsArrayBuilder(15);
 });
 
 
+
 //============================================================
+
+// SELECT JSON_BUILD_OBJECT(
+//   'photos', (SELECT JSON_AGG(ROW_TO_JSON("reviews_photos")) FROM reviews_photos))
 
 // ratings 1 = SELECT COUNT(*) FROM reviews WHERE rating = 1;
 // ratings 2 = SELECT COUNT(*) FROM reviews WHERE rating = 2;
