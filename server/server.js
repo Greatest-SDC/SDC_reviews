@@ -20,34 +20,45 @@ app.use(express.json());
 //   res.send('Hello World!')
 // });
 
-app.get('/reviews', (req, res) => {
-  database.query('SELECT * FROM reviews WHERE product = 1', (err, data) => {
-    if (err) {
-      res.sendStatus(500);
-    } else {
-      res.send(data.rows)
-    }
-  });
-});
-
-// const reviewsObjBuilder = (num) => {
-//   const results = [];
-
-//   const photos = [];
-
-//   database.query(`SELECT review_id, rating, summary, recommend, response, body, date, reviewer_name, helpfulness FROM reviews WHERE product = ${num}`, (err, data) => {
+// app.get('/reviews', (req, res) => {
+//   database.query('SELECT * FROM reviews WHERE product = 1', (err, data) => {
 //     if (err) {
 //       res.sendStatus(500);
 //     } else {
-//       results.push(data.rows);
+//       res.send(data.rows)
+//     }
+//   });
+// });
+
+const reviewsObjBuilder = (num) => {
+
+  database.query(`SELECT review_id, rating, summary, recommend, response, body, date, reviewer_name, helpfulness FROM reviews WHERE product = ${num}`, (err, data) => {
+    if (err) {
+      res.sendStatus(500);
+    } else {
+      const results = data.rows;
+      return results;
+    }
+  });
+}
+
+app.get('/reviews', (req, res) => {
+  reviewsObjBuilder(1);
+});
+
+// const reviewsObjBuilder = (num) => {
+
+//   database.query(`SELECT review_id, rating, summary, recommend, response, body, date, reviewer_name, helpfulness, id, url FROM reviews INNER JOIN reviews_photos ON reviews_photos.review_id = reviews.review_id WHERE product = ${num}`, (err, data) => {
+//     if (err) {
+//       console.log(err);
+//     } else {
+//       const results = data.rows;
+//       // results.push(data.rows);
+//       console.log(results);
 //       // res.send(data.rows)
 //     }
 //   });
-
-//   console.log(results);
 // }
-
-
 
 // app.get('/reviews', (req, res) => {
 //   reviewsObjBuilder(1);
