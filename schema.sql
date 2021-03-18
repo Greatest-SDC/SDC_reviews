@@ -4,8 +4,8 @@ DROP TABLE IF EXISTS characteristics;
 DROP TABLE IF EXISTS reviews;
 
 CREATE TABLE reviews (
-  id SERIAL PRIMARY KEY,
-  product_id INTEGER,
+  review_id SERIAL PRIMARY KEY,
+  product INTEGER,
   rating INTEGER,
   date TIMESTAMP,
   summary VARCHAR(150),
@@ -39,7 +39,3 @@ CREATE TABLE reviews_photos (
   FOREIGN KEY (review_id) REFERENCES reviews (id),
   url VARCHAR(200)
 );
-
--- CREATE INDEX product_id_string ON reviews (
---   product_id DESC
--- );
