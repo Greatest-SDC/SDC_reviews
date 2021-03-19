@@ -10,12 +10,41 @@ app.use(morgan('dev'));
 app.use(express.json());
 
 //==========================================================
-//Need to set up query parameters for parent object of nested results array including page, count, sort, and product_id
-//Look up ORDER BY to handle sort portion of request
 
-const reviewsResultsArrayBuilder = (num) => {
+// const reviewsResultsArrayBuilder = (num) => {
+
+//   const product = num;
+
+//   const resultsArr = `SELECT reviews.review_id, reviews.rating, reviews.summary, reviews.recommend, reviews.response, reviews.body, reviews.date, reviews.reviewer_name, reviews.helpfulness, (
+//     SELECT JSON_BUILD_OBJECT(
+//       'id', id,
+//       'url', url
+//     ) AS photos
+//     FROM reviews_photos
+//     WHERE reviews_photos.review_id = $1
+//     GROUP BY id)
+//   FROM reviews
+//   LEFT JOIN reviews_photos
+//   ON reviews_photos.review_id = reviews.review_id
+//   WHERE reviews.product = $1 AND reviews.reported = false
+//   GROUP BY reviews.review_id`;
+
+//   database.query(
+//     resultsArr, [product], (err, data) => {
+//     if (err) {
+//       console.log(err);
+//     } else {
+//       const results = data.rows;
+//       console.log(results);
+//     }
+//   });
+// }
+
+const reviewsResultsArrayBuilder = async(num, resultCount, sortBy, callback) => {
 
   const product = num;
+  const sort = sortBy;
+  const resultsTotal = resultCount;
 
   const resultsArr = `SELECT reviews.review_id, reviews.rating, reviews.summary, reviews.recommend, reviews.response, reviews.body, reviews.date, reviews.reviewer_name, reviews.helpfulness, (
     SELECT JSON_BUILD_OBJECT(
@@ -29,17 +58,19 @@ const reviewsResultsArrayBuilder = (num) => {
   LEFT JOIN reviews_photos
   ON reviews_photos.review_id = reviews.review_id
   WHERE reviews.product = $1 AND reviews.reported = false
-  GROUP BY reviews.review_id`;
+  GROUP BY reviews.review_id
+  ORDER BY $2
+  LIMIT $3`;
 
-  database.query(
-    resultsArr, [product], (err, data) => {
-    if (err) {
-      console.log(err);
-    } else {
-      const results = data.rows;
-      console.log(results);
-    }
-  });
+  let response;
+
+  try{
+    response = await database.query(resultsArr, [product, sort, resultsTotal])
+  } catch (err) {
+    console.log(err.stack)
+  }
+
+  callback(null, response);
 }
 
 app.get('/reviews/:page/:count/:sort/:product_id', (req, res) => {
@@ -60,16 +91,30 @@ app.get('/reviews/:page/:count/:sort/:product_id', (req, res) => {
     sort = 'relevant';
   }
 
-  const builtQuery = {
-    'product': productId,
-    'page': page,
-    'count': count,
-    'results': reviewsResultsArrayBuilder(productId)
+  const sortingFunc = (str) => {
+    if (str === 'helpful') {
+      return 'helpfulness DESC'
+    } else if (str === 'newest') {
+      return 'date DESC'
+    } else if (str === 'relevant') {
+      return 'helpfulness DESC, date, DESC'
+    }
   }
 
-  res.send(builtQuery);
+  reviewsResultsArrayBuilder(productId, count, sortingFunc(sort), (err, data) => {
+    if (err) {
+      res.sendStatus(500);
+    } else {
+      const builtQuery = {
+        'product': productId,
+        'page': page,
+        'count': count,
+        'results': data.rows
+      }
+      res.send(builtQuery);
+    }
+  });
 });
-
 
 
 //============================================================

@@ -39,3 +39,7 @@ CREATE TABLE reviews_photos (
   FOREIGN KEY (review_id) REFERENCES reviews (id),
   url VARCHAR(200)
 );
+
+CREATE INDEX review_id_index ON reviews(review_id);
+CREATE INDEX reviews_photos_review_id_index ON reviews_photos(review_id);
+CREATE INDEX product_index ON reviews(product);
