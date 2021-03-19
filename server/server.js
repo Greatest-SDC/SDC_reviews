@@ -15,20 +15,24 @@ app.use(express.json());
 
 const reviewsResultsArrayBuilder = (num) => {
 
+  const product = num;
+
+  const resultsArr = `SELECT reviews.review_id, reviews.rating, reviews.summary, reviews.recommend, reviews.response, reviews.body, reviews.date, reviews.reviewer_name, reviews.helpfulness, (
+    SELECT JSON_BUILD_OBJECT(
+      'id', id,
+      'url', url
+    ) AS photos
+    FROM reviews_photos
+    WHERE reviews_photos.review_id = $1
+    GROUP BY id)
+  FROM reviews
+  LEFT JOIN reviews_photos
+  ON reviews_photos.review_id = reviews.review_id
+  WHERE reviews.product = $1 AND reviews.reported = false
+  GROUP BY reviews.review_id`;
+
   database.query(
-    `SELECT reviews.review_id, reviews.rating, reviews.summary, reviews.recommend, reviews.response, reviews.body, reviews.date, reviews.reviewer_name, reviews.helpfulness, (
-      SELECT JSON_BUILD_OBJECT(
-        'id', id,
-        'url', url
-      ) AS photos
-      FROM reviews_photos
-      WHERE reviews_photos.review_id = ${num}
-      GROUP BY id)
-    FROM reviews
-    LEFT JOIN reviews_photos
-    ON reviews_photos.review_id = reviews.review_id
-    WHERE reviews.product = ${num}
-    GROUP BY reviews.review_id`, (err, data) => {
+    resultsArr, [product], (err, data) => {
     if (err) {
       console.log(err);
     } else {
@@ -38,8 +42,32 @@ const reviewsResultsArrayBuilder = (num) => {
   });
 }
 
-app.get('/reviews', (req, res) => {
-  reviewsResultsArrayBuilder(15);
+app.get('/reviews/:page/:count/:sort/:product_id', (req, res) => {
+  const page = req.params.page;
+  const count = req.params.count;
+  const sort = req.params.count;
+  const productId = req.params.product_id;
+
+  if (page === undefined) {
+    page = 0;
+  }
+
+  if (count === undefined) {
+    count = 5;
+  }
+
+  if (sort === undefined) {
+    sort = 'relevant';
+  }
+
+  const builtQuery = {
+    'product': productId,
+    'page': page,
+    'count': count,
+    'results': reviewsResultsArrayBuilder(productId)
+  }
+
+  res.send(builtQuery);
 });
 
 
@@ -96,6 +124,41 @@ const metadataObjectBuilder = (num) => {
 app.get('/reviews/meta', (req, res) => {
   metadataObjectBuilder(15);
 });
+
+app.put('/reviews/:review_id/helpful', (req, res) => {
+  const reviewIdParam = req.params.review_id;
+
+  let postgresStr = `UPDATE reviews SET helpfulness = helpfulness + 1 WHERE reviews.review_id = $1`;
+
+  database.query(
+    postgresStr, [reviewIdParam], (err, data) => {
+    if (err) {
+      res.sendStatus(500);
+    } else {
+      res.sendStatus(204);
+    }
+  });
+});
+
+app.put('/reviews/:review_id/report', (req, res) => {
+  const reviewIdParam = req.params.review_id;
+
+  let postgresStr = `UPDATE reviews SET reported = true WHERE reviews.review_id = $1`;
+
+  database.query(
+    postgresStr, [reviewIdParam], (err, data) => {
+    if (err) {
+      res.sendStatus(500);
+    } else {
+      res.sendStatus(204);
+    }
+  });
+});
+
+  // sqlText, [lineIdParam],
+
+  // let sqlText = 'UPDATE stations SET is_favorite = ? WHERE id = ?';
+  // sqlText, [req.body.is_favorite, req.params.stationId],
 
 app.listen(port, () => {
   console.log(`Reviews service listening at http://localhost:${port}`);
