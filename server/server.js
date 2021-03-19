@@ -11,35 +11,6 @@ app.use(express.json());
 
 //==========================================================
 
-// const reviewsResultsArrayBuilder = (num) => {
-
-//   const product = num;
-
-//   const resultsArr = `SELECT reviews.review_id, reviews.rating, reviews.summary, reviews.recommend, reviews.response, reviews.body, reviews.date, reviews.reviewer_name, reviews.helpfulness, (
-//     SELECT JSON_BUILD_OBJECT(
-//       'id', id,
-//       'url', url
-//     ) AS photos
-//     FROM reviews_photos
-//     WHERE reviews_photos.review_id = $1
-//     GROUP BY id)
-//   FROM reviews
-//   LEFT JOIN reviews_photos
-//   ON reviews_photos.review_id = reviews.review_id
-//   WHERE reviews.product = $1 AND reviews.reported = false
-//   GROUP BY reviews.review_id`;
-
-//   database.query(
-//     resultsArr, [product], (err, data) => {
-//     if (err) {
-//       console.log(err);
-//     } else {
-//       const results = data.rows;
-//       console.log(results);
-//     }
-//   });
-// }
-
 const reviewsResultsArrayBuilder = async(num, resultCount, sortBy, callback) => {
 
   const product = num;
@@ -170,6 +141,59 @@ app.get('/reviews/meta', (req, res) => {
   metadataObjectBuilder(15);
 });
 
+//=============================================================
+
+app.post('/reviews/:product_id/:rating/:summary/:body/:recommend/:name/:email/:photos/:characteristics', (req, res) => {
+  const productId = req.params.product_id; //$1
+  const rating = req.params.rating; //$2
+  const summary = req.params.summary; //$3
+  const body = req.params.body; //$4
+  const recommend = req.params.recommend; //$5
+  const name = req.params.name; //$6
+  const email = req.params.email; //$7
+  const photos = req.params.photos.join(', '); //$8
+  const characteristics = req.params.characteristics; //$9
+  const reviewId = reviews.review_id; //$10
+
+  let reviewStr = `INTERT INTO reviews (rating, summary, body, recommend, reviewer_name, reviewer_email) VALUES ($2, $3, $4, $5, $6, $7) WHERE reviews.review_id = $1`;
+
+  database.query(
+    reviewStr, [productId, rating, summary, body, recommend, name, email], (err, data) => {
+    if (err) {
+      res.sendStatus(500);
+    } else {
+      res.sendStatus(201);
+    }
+  });
+
+  let photosStr = `INSERT INTO reviews_photos (url) VALUES ($9) WHERE reviews_photos.review_id = $10`;
+
+  database.query(
+    photosStr, [photos, reviewId], (err, data) => {
+    if (err) {
+      res.sendStatus(500);
+    } else {
+      res.sendStatus(201);
+    }
+  });
+
+  const charIdsArr = parseInt(Object.keys(characteristics)); //$11
+  const charValuesArr = Object.values(characteristics); //$12
+
+  let characteristicsStr = `INSERT INTO characteristic_reviews (characteristic_id, value) VALUES (ARRAY [$11], ARRAY [$12]) WHERE characteristic_reviews.review_id = $10`;
+
+  database.query(
+    photosStr, [charIdsArr, charValuesArr, reviewId], (err, data) => {
+    if (err) {
+      res.sendStatus(500);
+    } else {
+      res.sendStatus(201);
+    }
+  });
+});
+
+//=============================================================
+
 app.put('/reviews/:review_id/helpful', (req, res) => {
   const reviewIdParam = req.params.review_id;
 
@@ -185,6 +209,8 @@ app.put('/reviews/:review_id/helpful', (req, res) => {
   });
 });
 
+//==============================================================
+
 app.put('/reviews/:review_id/report', (req, res) => {
   const reviewIdParam = req.params.review_id;
 
@@ -199,11 +225,6 @@ app.put('/reviews/:review_id/report', (req, res) => {
     }
   });
 });
-
-  // sqlText, [lineIdParam],
-
-  // let sqlText = 'UPDATE stations SET is_favorite = ? WHERE id = ?';
-  // sqlText, [req.body.is_favorite, req.params.stationId],
 
 app.listen(port, () => {
   console.log(`Reviews service listening at http://localhost:${port}`);
