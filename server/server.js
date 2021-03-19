@@ -44,10 +44,8 @@ const reviewsResultsArrayBuilder = async(num, resultCount, sortBy, callback) => 
   callback(null, response);
 }
 
-app.get('/reviews/:page/:count/:sort/:product_id', (req, res) => {
-  const page = req.params.page;
-  const count = req.params.count;
-  const sort = req.params.count;
+app.get('/reviews/:product_id', (req, res) => {
+  let { page, count, sort } = req.body
   const productId = req.params.product_id;
 
   if (page === undefined) {
@@ -131,29 +129,45 @@ const metadataObjectBuilder = (num) => {
     if (err) {
       console.log(err);
     } else {
-      const results = data.rows;
+      const results = data.rows[0];
       console.log(results);
     }
   });
 }
 
-app.get('/reviews/meta', (req, res) => {
-  metadataObjectBuilder(15);
+app.get('/reviews/meta/:product_id', (req, res) => {
+  const productId = req.params.product_id;
+
+  // metadataObjectBuilder(productId, count, sortingFunc(sort), (err, data) => {
+  //   if (err) {
+  //     res.sendStatus(500);
+  //   } else {
+  //     const builtQuery = {
+  //       'product': productId,
+  //       'ratings': page,
+  //       'count': count,
+  //       'results': data.rows
+  //     }
+  //     res.send(builtQuery);
+  //   }
+  // });
+  metadataObjectBuilder(productId);
 });
 
 //=============================================================
 
-app.post('/reviews/:product_id/:rating/:summary/:body/:recommend/:name/:email/:photos/:characteristics', (req, res) => {
-  const productId = req.params.product_id; //$1
-  const rating = req.params.rating; //$2
-  const summary = req.params.summary; //$3
-  const body = req.params.body; //$4
-  const recommend = req.params.recommend; //$5
-  const name = req.params.name; //$6
-  const email = req.params.email; //$7
-  const photos = req.params.photos.join(', '); //$8
-  const characteristics = req.params.characteristics; //$9
-  const reviewId = reviews.review_id; //$10
+app.post('/reviews', (req, res) => {
+  const { productId, rating, summary, body, recommend, name, email, photos, characteristics, reviewId } = req.body.reviewObj;
+  // productId = $1
+  // rating = $2
+  // summary = $3
+  // body = $4
+  // recommend = $5
+  // name = $6
+  // email = $7
+  // photos = $8
+  // characteristics = $9
+  // reviewId = $10
 
   let reviewStr = `INTERT INTO reviews (rating, summary, body, recommend, reviewer_name, reviewer_email) VALUES ($2, $3, $4, $5, $6, $7) WHERE reviews.review_id = $1`;
 
@@ -168,8 +182,10 @@ app.post('/reviews/:product_id/:rating/:summary/:body/:recommend/:name/:email/:p
 
   let photosStr = `INSERT INTO reviews_photos (url) VALUES ($9) WHERE reviews_photos.review_id = $10`;
 
+  const urlStr = photos.join(', ');
+
   database.query(
-    photosStr, [photos, reviewId], (err, data) => {
+    photosStr, [urlStr, reviewId], (err, data) => {
     if (err) {
       res.sendStatus(500);
     } else {
@@ -180,15 +196,32 @@ app.post('/reviews/:product_id/:rating/:summary/:body/:recommend/:name/:email/:p
   const charIdsArr = parseInt(Object.keys(characteristics)); //$11
   const charValuesArr = Object.values(characteristics); //$12
 
-  let characteristicsStr = `INSERT INTO characteristic_reviews (characteristic_id, value) VALUES (ARRAY [$11], ARRAY [$12]) WHERE characteristic_reviews.review_id = $10`;
+  charIdsArr.forEach((id) => {
+    let characteristicsIdStr = `INSERT INTO characteristic_reviews (characteristic_id) VALUES ($11) WHERE characteristic_reviews.review_id = $10`;
 
-  database.query(
-    photosStr, [charIdsArr, charValuesArr, reviewId], (err, data) => {
-    if (err) {
-      res.sendStatus(500);
-    } else {
-      res.sendStatus(201);
-    }
+    database.query(
+      characteristicsIdStr, [id, reviewId], (err, data) => {
+        if (err) {
+          res.sendStatus(500);
+        } else {
+          res.sendStatus(201);
+        }
+      }
+    );
+  });
+
+  charValuesArr.forEach((val) => {
+    let characteristicsValStr = `INSERT INTO characteristic_reviews (value) VALUES ($12) WHERE characteristic_reviews.review_id = $10`;
+
+    database.query(
+      characteristicsValStr, [val, reviewId], (err, data) => {
+        if (err) {
+          res.sendStatus(500);
+        } else {
+          res.sendStatus(201);
+        }
+      }
+    );
   });
 });
 
