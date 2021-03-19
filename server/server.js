@@ -45,10 +45,7 @@ app.get('/reviews', (req, res) => {
 
 //============================================================
 
-// SELECT JSON_BUILD_OBJECT(
-//   'photos', (SELECT JSON_AGG(ROW_TO_JSON("reviews_photos")) FROM reviews_photos))
-
-// This builds the ratings object contents
+// This builds the ratings object contents without the key of "ratings"
 // `SELECT
 //   SUM(1) AS "1",
 //   SUM(2) AS "2",
@@ -58,36 +55,30 @@ app.get('/reviews', (req, res) => {
 // FROM reviews
 // WHERE product = ${num}
 
-// These build each part of the recommend object
-// SELECT COUNT(*) AS "false" FROM reviews WHERE recommend = false;
-// SELECT COUNT(*) AS "true" FROM reviews WHERE recommend = true;
+// This builds the recommended object contents without the key of "recommended"
+// SELECT
+//   COUNT(*) filter (WHERE NOT "recommend") AS false,
+//   COUNT(*) filter (WHERE "recommend") AS true
+// FROM reviews
+// WHERE product = ${num}
+
+// SELECT JSON_BUILD_OBJECT(
+//   'photos', (SELECT JSON_AGG(ROW_TO_JSON("reviews_photos")) FROM reviews_photos))
+
+// Still need to compile tables to get characteristics name with appropriate id and value
 
 // This creates average value for characteristics.quality.value
 // `SELECT AVG(value) AS "value" FROM characteristic_reviews`
 
-// SELECT characteristics.name, characteristics.id FROM characteristics INNER JOIN ON characteristic_reviews WHERE characteristics.id = characteristic_reviews.characteristic_id;
-
 
 const metadataObjectBuilder = (num) => {
 
-  // `SELECT JSON_BUILD_OBJECT(
-  //   '1', value,
-  //   '2', value,
-  //   '3', value,
-  //   '4', value,
-  //   '5', value
-  // ) AS ratings
-  // FROM characteristic_reviews
-  // WHERE characteristic_reviews.review_id = ${num}
-  // GROUP BY characteristic_reviews.value`
-
   database.query(
     `SELECT
-      SUM(false) AS false,
-      SUM(true) AS true,
+      COUNT(*) filter (WHERE NOT "recommend") AS false,
+      COUNT(*) filter (WHERE "recommend") AS true
     FROM reviews
-    WHERE product = ${num}
-    AND reviews.recommend = false || reviews.recommend = true`
+    WHERE product = ${num}`
     , (err, data) => {
     if (err) {
       console.log(err);
