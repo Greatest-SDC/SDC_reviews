@@ -48,12 +48,15 @@ app.get('/reviews', (req, res) => {
 // SELECT JSON_BUILD_OBJECT(
 //   'photos', (SELECT JSON_AGG(ROW_TO_JSON("reviews_photos")) FROM reviews_photos))
 
-// These build each part of the ratings object one by one
-// SELECT COUNT(*) AS "1" FROM reviews WHERE rating = 1
-// SELECT COUNT(*) AS "2" FROM reviews WHERE rating = 2;
-// SELECT COUNT(*) AS "3" FROM reviews WHERE rating = 3;
-// SELECT COUNT(*) AS "4" FROM reviews WHERE rating = 4;
-// SELECT COUNT(*) AS "5" FROM reviews WHERE rating = 5;
+// This builds the ratings object contents
+// `SELECT
+//   SUM(1) AS "1",
+//   SUM(2) AS "2",
+//   SUM(3) AS "3",
+//   SUM(4) AS "4",
+//   SUM(5) AS "5"
+// FROM reviews
+// WHERE product = ${num}
 
 // These build each part of the recommend object
 // SELECT COUNT(*) AS "false" FROM reviews WHERE recommend = false;
@@ -67,24 +70,25 @@ app.get('/reviews', (req, res) => {
 
 const metadataObjectBuilder = (num) => {
 
-  // SELECT JSON_BUILD_OBJECT(
-  //   'id', id, 'url', url
-  // ) AS photos
-  // FROM reviews_photos
-  // WHERE reviews_photos.review_id = ${num}
-  // GROUP BY id
+  // `SELECT JSON_BUILD_OBJECT(
+  //   '1', value,
+  //   '2', value,
+  //   '3', value,
+  //   '4', value,
+  //   '5', value
+  // ) AS ratings
+  // FROM characteristic_reviews
+  // WHERE characteristic_reviews.review_id = ${num}
+  // GROUP BY characteristic_reviews.value`
 
   database.query(
-    `SELECT JSON_BUILD_OBJECT(
-      '1', value,
-      '2', value,
-      '3', value,
-      '4', value,
-      '5', value
-    ) AS ratings
-    FROM characteristic_reviews
-    WHERE characteristic_reviews.review_id = ${num}
-    GROUP BY id`, (err, data) => {
+    `SELECT
+      SUM(false) AS false,
+      SUM(true) AS true,
+    FROM reviews
+    WHERE product = ${num}
+    AND reviews.recommend = false || reviews.recommend = true`
+    , (err, data) => {
     if (err) {
       console.log(err);
     } else {
