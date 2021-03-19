@@ -9,19 +9,8 @@ const port = 3000;
 app.use(morgan('dev'));
 app.use(express.json());
 
-// app.get('/reviews', (req, res) => {
-//   database.query('SELECT * FROM reviews WHERE product = 1', (err, data) => {
-//     if (err) {
-//       res.sendStatus(500);
-//     } else {
-//       res.send(data.rows)
-//     }
-//   });
-// });
-
 //==========================================================
-//The below works, but need to have photos be in a key-value pair like this - 'photos': {id: INT, url: STRING}
-//Also need to set up query parameters for parent object of nested results array including page, count, sort, and product_id
+//Need to set up query parameters for parent object of nested results array including page, count, sort, and product_id
 //Look up ORDER BY to handle sort portion of request
 
 const reviewsResultsArrayBuilder = (num) => {
@@ -59,25 +48,43 @@ app.get('/reviews', (req, res) => {
 // SELECT JSON_BUILD_OBJECT(
 //   'photos', (SELECT JSON_AGG(ROW_TO_JSON("reviews_photos")) FROM reviews_photos))
 
-// ratings 1 = SELECT COUNT(*) FROM reviews WHERE rating = 1;
-// ratings 2 = SELECT COUNT(*) FROM reviews WHERE rating = 2;
-// ratings 3 = SELECT COUNT(*) FROM reviews WHERE rating = 3;
-// ratings 4 = SELECT COUNT(*) FROM reviews WHERE rating = 4;
-// ratings 5 = SELECT COUNT(*) FROM reviews WHERE rating = 5;
+// These build each part of the ratings object one by one
+// SELECT COUNT(*) AS "1" FROM reviews WHERE rating = 1
+// SELECT COUNT(*) AS "2" FROM reviews WHERE rating = 2;
+// SELECT COUNT(*) AS "3" FROM reviews WHERE rating = 3;
+// SELECT COUNT(*) AS "4" FROM reviews WHERE rating = 4;
+// SELECT COUNT(*) AS "5" FROM reviews WHERE rating = 5;
 
-// Investigate TO_CHAR(integer, '9') further
+// These build each part of the recommend object
+// SELECT COUNT(*) AS "false" FROM reviews WHERE recommend = false;
+// SELECT COUNT(*) AS "true" FROM reviews WHERE recommend = true;
 
-// recommend false = SELECT COUNT(*) FROM reviews WHERE recommend = false;
-// recommend true = SELECT COUNT(*) FROM reviews WHERE recommend = true;
-
-// characteristic name value = SELECT AVG(value) FROM characteristic_reviews;
+// This creates average value for characteristics.quality.value
+// `SELECT AVG(value) AS "value" FROM characteristic_reviews`
 
 // SELECT characteristics.name, characteristics.id FROM characteristics INNER JOIN ON characteristic_reviews WHERE characteristics.id = characteristic_reviews.characteristic_id;
 
 
-const metadataObjectBuilder = () => {
+const metadataObjectBuilder = (num) => {
 
-  database.query(`SELECT AVG(characteristic_reviews.value) FROM characteristic_reviews`, (err, data) => {
+  // SELECT JSON_BUILD_OBJECT(
+  //   'id', id, 'url', url
+  // ) AS photos
+  // FROM reviews_photos
+  // WHERE reviews_photos.review_id = ${num}
+  // GROUP BY id
+
+  database.query(
+    `SELECT JSON_BUILD_OBJECT(
+      '1', value,
+      '2', value,
+      '3', value,
+      '4', value,
+      '5', value
+    ) AS ratings
+    FROM characteristic_reviews
+    WHERE characteristic_reviews.review_id = ${num}
+    GROUP BY id`, (err, data) => {
     if (err) {
       console.log(err);
     } else {
@@ -88,7 +95,7 @@ const metadataObjectBuilder = () => {
 }
 
 app.get('/reviews/meta', (req, res) => {
-  metadataObjectBuilder();
+  metadataObjectBuilder(15);
 });
 
 app.listen(port, () => {

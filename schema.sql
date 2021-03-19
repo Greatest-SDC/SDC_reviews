@@ -30,7 +30,7 @@ CREATE TABLE characteristic_reviews (
   FOREIGN KEY (characteristic_id) REFERENCES characteristics (id),
   review_id INTEGER,
   FOREIGN KEY (review_id) REFERENCES reviews (id),
-  value VARCHAR(1)
+  value INTEGER
 );
 
 CREATE TABLE reviews_photos (
