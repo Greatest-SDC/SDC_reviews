@@ -159,9 +159,7 @@ app.get('/reviews/meta/:product_id', async (req, res) => {
   }
 });
 
-//=============================================================
-
-app.post('/reviews', (req, res) => {
+app.post('/reviews', async (req, res) => {
   const {
     productId,
     rating,
@@ -173,74 +171,48 @@ app.post('/reviews', (req, res) => {
     photos,
     characteristics,
     reviewId,
-  } = req.body.reviewObj;
-  // productId = $1
-  // rating = $2
-  // summary = $3
-  // body = $4
-  // recommend = $5
-  // name = $6
-  // email = $7
-  // photos = $8
-  // characteristics = $9
-  // reviewId = $10
+  } = req.body;
 
-  const reviewStr = 'INTERT INTO reviews (rating, summary, body, recommend, reviewer_name, reviewer_email) VALUES ($2, $3, $4, $5, $6, $7) WHERE reviews.review_id = $1';
-
-  database.query(
-    reviewStr, [productId, rating, summary, body, recommend, name, email], (err, data) => {
-      if (err) {
-        res.sendStatus(500);
-      } else {
-        res.sendStatus(201);
-      }
-    },
-  );
-
-  const photosStr = `INSERT INTO reviews_photos (url) VALUES ($9) WHERE reviews_photos.review_id = $10`;
-
+  const defaultDate = new Date();
+  const formatDate = defaultDate.toISOString();
+  const defaultReported = false;
+  const defaultResponse = null;
+  const defaultHelpfulness = 0;
   const urlStr = photos.join(', ');
+  const charIdsArr = Object.keys(characteristics);
+  const charValuesArr = Object.values(characteristics);
 
-  database.query(
-    photosStr, [urlStr, reviewId], (err, data) => {
-      if (err) {
-        res.sendStatus(500);
-      } else {
-        res.sendStatus(201);
-      }
-    },
-  );
+  const reviewStr = 'INSERT INTO reviews (product, rating, date, summary, body, recommend, reported, reviewer_name, reviewer_email, response, helpfulness) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)';
 
-  const charIdsArr = parseInt(Object.keys(characteristics)); //$11
-  const charValuesArr = Object.values(characteristics); //$12
+  const photosStr = 'INSERT INTO reviews_photos (url, review_id) VALUES ($1, $2)';
 
-  charIdsArr.forEach((id) => {
-    const characteristicsIdStr = 'INSERT INTO characteristic_reviews (characteristic_id) VALUES ($11) WHERE characteristic_reviews.review_id = $10';
+  let charIds;
 
-    database.query(
-      characteristicsIdStr, [id, reviewId], (err, data) => {
-        if (err) {
-          res.sendStatus(500);
-        } else {
-          res.sendStatus(201);
-        }
-      },
-    );
+  let charVals;
+
+  charIdsArr.forEach(async (id) => {
+    const idToNum = parseInt(id);
+
+    const characteristicsIdStr = 'INSERT INTO characteristic_reviews (characteristic_id, review_id) VALUES ($1, $2)';
+
+    charIds = await database.query(characteristicsIdStr, [idToNum, reviewId]);
   });
 
-  charValuesArr.forEach((val) => {
-    const characteristicsValStr = 'INSERT INTO characteristic_reviews (value) VALUES ($12) WHERE characteristic_reviews.review_id = $10';
+  charValuesArr.forEach(async (val) => {
+    const characteristicsValStr = 'INSERT INTO characteristic_reviews (value, review_id) VALUES ($1, $2)';
 
-    database.query(
-      characteristicsValStr, [val, reviewId], (err, data) => {
-        if (err) {
-          res.sendStatus(500);
-        } else {
-          res.sendStatus(201);
-        }
-      },
-    );
+    charVals = await database.query(characteristicsValStr, [val, reviewId]);
   });
+
+  try {
+    await database.query(reviewStr, [productId, rating, formatDate, summary, body, recommend, defaultReported, name, email, defaultResponse, defaultHelpfulness]);
+
+    await database.query(photosStr, [urlStr, reviewId]);
+    res.sendStatus(201);
+  } catch (err) {
+    console.log(err);
+    res.sendStatus(500);
+  }
 });
 
 app.put('/reviews/:review_id/helpful', (req, res) => {
