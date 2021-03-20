@@ -42,35 +42,22 @@ const reviewsResultsArrayBuilder = async (num, resultCount, sortBy, callback) =>
   callback(null, response);
 };
 
-const uniqueQualityIdFunc = async (names, ids, callback) => {
-  const namesArr = names.rows;
-  const idArr = ids.rows;
-  let valuesArr;
+// const uniqueQualityIdFunc = async (ids, callback) => {
+//   const idArr = ids.rows;
 
-  let obj = {};
+//   let values;
 
-  for (let i = 0; i < namesArr.length; i++) {
-    obj[namesArr[i].name] = {};
-    obj[namesArr[i].name].id = idArr[i].id;
-  }
+//   try {
+//     for (let i = 0; i < idArr.length; i++) {
+//       const avgCalcString = `SELECT AVG(value) AS "value" FROM characteristic_reviews WHERE characteristic_reviews.characteristic_id = ${idArr[i]}`;
+//       values = await database.query(avgCalcString);
+//     }
+//   } catch (err) {
+//     console.log(err.stack);
+//   }
 
-  console.log('obj: ', obj);
-
-  try {
-    idArr.forEach(async (uniqId) => {
-      const avgCalcString = `SELECT AVG(value) AS "value" FROM characteristic_reviews WHERE characteristic_reviews.characteristic_id = ${uniqId.id}`;
-
-      const avg = await database.query(avgCalcString);
-
-      valuesArr = avg.rows;
-    });
-  } catch (err) {
-    console.log(err.stack);
-  }
-  console.log('valuesArr: ', valuesArr);
-
-  callback(null, valuesArr);
-};
+//   callback(null, values);
+// };
 
 app.get('/reviews/:product_id', (req, res) => {
   let { page, count, sort } = req.body;
@@ -158,19 +145,47 @@ app.get('/reviews/meta/:product_id', async (req, res) => {
   const characteristicNames = await database.query(characterNamesString, [productId]);
   const characterisiticUniqueIds = await database.query(charUniqueIdString, [productId]);
 
-  uniqueQualityIdFunc(characteristicNames, characterisiticUniqueIds, (err, data) => {
-    if (err) {
-      res.sendStatus(500);
-    } else {
-      const metaObj = {
-        product_id: productId,
-        recommended: recommendedObj.rows[0].recommended,
-        ratings: ratingsObj.rows[0].ratings,
-        data,
-      };
-      res.send(metaObj);
-    }
-  });
+  const names = characteristicNames.rows;
+  const ids = characterisiticUniqueIds.rows;
+
+  const characteristics = {};
+
+  for (let i = 0; i < names.length; i++) {
+    characteristics[names[i].name] = {};
+    characteristics[names[i].name].id = ids[i].id;
+    characteristics[names[i].name].value = 0;
+  }
+
+  // let valuesArr;
+
+  // ids.forEach((id) => {
+  //   const avgCalcString = `SELECT AVG(value) AS "value" FROM characteristic_reviews WHERE characteristic_reviews.characteristic_id = ${id}`;
+
+  //   database.query(
+  //     avgCalcString, (err, data) => {
+  //       if (err) {
+  //         res.sendStatus(500);
+  //       } else {
+  //         res.send(metaObj);
+  //       }
+  //     },
+  //   );
+  // });
+
+  // valuesArr(ids, (err, data) => {
+
+  //   if (err) {
+  //     res.sendStatus(500);
+  //   } else {
+  //     const metaObj = {
+  //       product_id: productId,
+  //       recommended: recommendedObj.rows[0].recommended,
+  //       ratings: ratingsObj.rows[0].ratings,
+  //       characteristics,
+  //     };
+  //     res.send(metaObj);
+  //   }
+  // });
 });
 
 //=============================================================
