@@ -3,16 +3,14 @@ const morgan = require('morgan');
 const axios = require('axios');
 const path = require('path');
 const database = require('../database');
+
 const app = express();
 const port = 3000;
 
 app.use(morgan('dev'));
 app.use(express.json());
 
-//==========================================================
-
-const reviewsResultsArrayBuilder = async(num, resultCount, sortBy, callback) => {
-
+const reviewsResultsArrayBuilder = async (num, resultCount, sortBy, callback) => {
   const product = num;
   const sort = sortBy;
   const resultsTotal = resultCount;
@@ -35,17 +33,43 @@ const reviewsResultsArrayBuilder = async(num, resultCount, sortBy, callback) => 
 
   let response;
 
-  try{
-    response = await database.query(resultsArr, [product, sort, resultsTotal])
+  try {
+    response = await database.query(resultsArr, [product, sort, resultsTotal]);
   } catch (err) {
-    console.log(err.stack)
+    console.log(err.stack);
   }
 
   callback(null, response);
-}
+};
+
+const uniqueQualityIdFunc = async (names, ids) => {
+  ids.forEach((uniqId) => {
+    let avgCalcString = `SELECT AVG(value) AS "value" FROM characteristic_reviews WHERE characteristic_reviews.characteristic_id = ${uniqId.id}`;
+
+    database.query(
+      avgCalcString, (err, data) => {
+        if (err) {
+          res.sendStatus(500);
+        } else {
+          res.send(data.rows);
+        }
+      },
+    );
+  });
+
+  let response;
+
+  try {
+    response = await database.query(qualityId, [product]);
+  } catch (err) {
+    console.log(err.stack);
+  }
+
+  callback(null, response);
+};
 
 app.get('/reviews/:product_id', (req, res) => {
-  let { page, count, sort } = req.body
+  let { page, count, sort } = req.body;
   const productId = req.params.product_id;
 
   if (page === undefined) {
@@ -62,50 +86,34 @@ app.get('/reviews/:product_id', (req, res) => {
 
   const sortingFunc = (str) => {
     if (str === 'helpful') {
-      return 'helpfulness DESC'
-    } else if (str === 'newest') {
-      return 'date DESC'
-    } else if (str === 'relevant') {
-      return 'helpfulness DESC, date, DESC'
+      return 'helpfulness DESC';
     }
-  }
+
+    if (str === 'newest') {
+      return 'date DESC';
+    }
+
+    if (str === 'relevant') {
+      return 'helpfulness DESC, date, DESC';
+    }
+  };
 
   reviewsResultsArrayBuilder(productId, count, sortingFunc(sort), (err, data) => {
     if (err) {
       res.sendStatus(500);
     } else {
       const builtQuery = {
-        'product': productId,
-        'page': page,
-        'count': count,
-        'results': data.rows
-      }
+        product: productId,
+        page: page,
+        count: count,
+        results: data.rows,
+      };
       res.send(builtQuery);
     }
   });
 });
 
-
 //============================================================
-
-// This builds the ratings object contents with the key of "ratings", but the values are integers not strings
-// SELECT JSON_BUILD_OBJECT(
-//   '1', SUM(1),
-//   '2', SUM(2),
-//   '3', SUM(3),
-//   '4', SUM(4),
-//   '5', SUM(5)
-// ) AS ratings
-// FROM reviews
-// WHERE product = ${num}
-
-// This builds the recommended object contents, but the values of false and true are integers, not strings
-// SELECT JSON_BUILD_OBJECT(
-//   'false', COUNT(*) filter (WHERE NOT "recommend"),
-//   'true', COUNT(*) filter (WHERE "recommend")
-// ) AS recommended
-// FROM reviews
-// WHERE product = ${num}
 
 // This builds an object with the names, ids, and values of the characteristics tied to the product id
 // SELECT
@@ -115,49 +123,69 @@ app.get('/reviews/:product_id', (req, res) => {
 
 // This creates average value for characteristics.quality.value
 // `SELECT AVG(value) AS "value" FROM characteristic_reviews`
+// 'SELECT AVG(value) AS "value" FROM characteristic_reviews, characteristics WHERE characteristic_reviews.characteristic_id = characteristics.id AND characteristics.product_id = $1'
 
-const metadataObjectBuilder = (num) => {
-
-  database.query(
-    `SELECT JSON_BUILD_OBJECT(
-      'false', COUNT(*) filter (WHERE NOT "recommend"),
-      'true', COUNT(*) filter (WHERE "recommend")
-    ) AS recommended
-    FROM reviews
-    WHERE product = ${num}`
-    , (err, data) => {
-    if (err) {
-      console.log(err);
-    } else {
-      const results = data.rows[0];
-      console.log(results);
-    }
-  });
-}
-
-app.get('/reviews/meta/:product_id', (req, res) => {
+app.get('/reviews/meta/:product_id', async (req, res) => {
   const productId = req.params.product_id;
 
-  // metadataObjectBuilder(productId, count, sortingFunc(sort), (err, data) => {
-  //   if (err) {
-  //     res.sendStatus(500);
-  //   } else {
-  //     const builtQuery = {
-  //       'product': productId,
-  //       'ratings': page,
-  //       'count': count,
-  //       'results': data.rows
-  //     }
-  //     res.send(builtQuery);
-  //   }
-  // });
-  metadataObjectBuilder(productId);
+  const recommendStr = `SELECT JSON_BUILD_OBJECT(
+    'false', COUNT(*) filter (WHERE NOT "recommend"),
+    'true', COUNT(*) filter (WHERE "recommend")
+  ) AS recommended
+  FROM reviews
+  WHERE product = $1`;
+
+  const ratingString = `SELECT JSON_BUILD_OBJECT(
+    '1', SUM(1),
+    '2', SUM(2),
+    '3', SUM(3),
+    '4', SUM(4),
+    '5', SUM(5)
+  ) AS ratings
+  FROM reviews
+  WHERE product = $1`;
+
+  const characterNamesString = 'SELECT name FROM characteristics WHERE characteristics.product_id = $1';
+
+  const charUniqueIdString = 'SELECT id FROM characteristics WHERE characteristics.product_id = $1';
+
+  const recommendedObj = await database.query(recommendStr, [productId]);
+  const ratingsObj = await database.query(ratingString, [productId]);
+  const characteristicNames = await database.query(characterNamesString, [productId]);
+  const characterisiticUniqueIds = await database.query(charUniqueIdString, [productId]);
+
+  uniqueQualityIdFunc(characteristicNames, characterisiticUniqueIds, (err, data) => {
+    if (err) {
+      res.sendStatus(500);
+    } else {
+      const metaObj = {
+        product_id: productId,
+        recommendedObj,
+        ratingsObj,
+        characteristics: {
+          data,
+        },
+      };
+      res.send(metaObj);
+    }
+  });
 });
 
 //=============================================================
 
 app.post('/reviews', (req, res) => {
-  const { productId, rating, summary, body, recommend, name, email, photos, characteristics, reviewId } = req.body.reviewObj;
+  const {
+    productId,
+    rating,
+    summary,
+    body,
+    recommend,
+    name,
+    email,
+    photos,
+    characteristics,
+    reviewId,
+  } = req.body.reviewObj;
   // productId = $1
   // rating = $2
   // summary = $3
@@ -169,35 +197,37 @@ app.post('/reviews', (req, res) => {
   // characteristics = $9
   // reviewId = $10
 
-  let reviewStr = `INTERT INTO reviews (rating, summary, body, recommend, reviewer_name, reviewer_email) VALUES ($2, $3, $4, $5, $6, $7) WHERE reviews.review_id = $1`;
+  const reviewStr = 'INTERT INTO reviews (rating, summary, body, recommend, reviewer_name, reviewer_email) VALUES ($2, $3, $4, $5, $6, $7) WHERE reviews.review_id = $1';
 
   database.query(
     reviewStr, [productId, rating, summary, body, recommend, name, email], (err, data) => {
-    if (err) {
-      res.sendStatus(500);
-    } else {
-      res.sendStatus(201);
-    }
-  });
+      if (err) {
+        res.sendStatus(500);
+      } else {
+        res.sendStatus(201);
+      }
+    },
+  );
 
-  let photosStr = `INSERT INTO reviews_photos (url) VALUES ($9) WHERE reviews_photos.review_id = $10`;
+  const photosStr = `INSERT INTO reviews_photos (url) VALUES ($9) WHERE reviews_photos.review_id = $10`;
 
   const urlStr = photos.join(', ');
 
   database.query(
     photosStr, [urlStr, reviewId], (err, data) => {
-    if (err) {
-      res.sendStatus(500);
-    } else {
-      res.sendStatus(201);
-    }
-  });
+      if (err) {
+        res.sendStatus(500);
+      } else {
+        res.sendStatus(201);
+      }
+    },
+  );
 
   const charIdsArr = parseInt(Object.keys(characteristics)); //$11
   const charValuesArr = Object.values(characteristics); //$12
 
   charIdsArr.forEach((id) => {
-    let characteristicsIdStr = `INSERT INTO characteristic_reviews (characteristic_id) VALUES ($11) WHERE characteristic_reviews.review_id = $10`;
+    const characteristicsIdStr = 'INSERT INTO characteristic_reviews (characteristic_id) VALUES ($11) WHERE characteristic_reviews.review_id = $10';
 
     database.query(
       characteristicsIdStr, [id, reviewId], (err, data) => {
@@ -206,12 +236,12 @@ app.post('/reviews', (req, res) => {
         } else {
           res.sendStatus(201);
         }
-      }
+      },
     );
   });
 
   charValuesArr.forEach((val) => {
-    let characteristicsValStr = `INSERT INTO characteristic_reviews (value) VALUES ($12) WHERE characteristic_reviews.review_id = $10`;
+    const characteristicsValStr = 'INSERT INTO characteristic_reviews (value) VALUES ($12) WHERE characteristic_reviews.review_id = $10';
 
     database.query(
       characteristicsValStr, [val, reviewId], (err, data) => {
@@ -220,45 +250,43 @@ app.post('/reviews', (req, res) => {
         } else {
           res.sendStatus(201);
         }
-      }
+      },
     );
   });
 });
 
-//=============================================================
-
 app.put('/reviews/:review_id/helpful', (req, res) => {
   const reviewIdParam = req.params.review_id;
 
-  let postgresStr = `UPDATE reviews SET helpfulness = helpfulness + 1 WHERE reviews.review_id = $1`;
+  const postgresStr = 'UPDATE reviews SET helpfulness = helpfulness + 1 WHERE reviews.review_id = $1';
 
   database.query(
     postgresStr, [reviewIdParam], (err, data) => {
-    if (err) {
-      res.sendStatus(500);
-    } else {
-      res.sendStatus(204);
-    }
-  });
+      if (err) {
+        res.sendStatus(500);
+      } else {
+        res.sendStatus(204);
+      }
+    },
+  );
 });
-
-//==============================================================
 
 app.put('/reviews/:review_id/report', (req, res) => {
   const reviewIdParam = req.params.review_id;
 
-  let postgresStr = `UPDATE reviews SET reported = true WHERE reviews.review_id = $1`;
+  const postgresStr = 'UPDATE reviews SET reported = true WHERE reviews.review_id = $1';
 
   database.query(
     postgresStr, [reviewIdParam], (err, data) => {
-    if (err) {
-      res.sendStatus(500);
-    } else {
-      res.sendStatus(204);
-    }
-  });
+      if (err) {
+        res.sendStatus(500);
+      } else {
+        res.sendStatus(204);
+      }
+    },
+  );
 });
 
 app.listen(port, () => {
   console.log(`Reviews service listening at http://localhost:${port}`);
-})
+});
