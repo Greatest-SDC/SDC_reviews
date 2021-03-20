@@ -42,23 +42,6 @@ const reviewsResultsArrayBuilder = async (num, resultCount, sortBy, callback) =>
   callback(null, response);
 };
 
-// const uniqueQualityIdFunc = async (ids, callback) => {
-//   const idArr = ids.rows;
-
-//   let values;
-
-//   try {
-//     for (let i = 0; i < idArr.length; i++) {
-//       const avgCalcString = `SELECT AVG(value) AS "value" FROM characteristic_reviews WHERE characteristic_reviews.characteristic_id = ${idArr[i]}`;
-//       values = await database.query(avgCalcString);
-//     }
-//   } catch (err) {
-//     console.log(err.stack);
-//   }
-
-//   callback(null, values);
-// };
-
 app.get('/reviews/:product_id', (req, res) => {
   let { page, count, sort } = req.body;
   const productId = req.params.product_id;
@@ -104,18 +87,6 @@ app.get('/reviews/:product_id', (req, res) => {
   });
 });
 
-//============================================================
-
-// This builds an object with the names, ids, and values of the characteristics tied to the product id
-// SELECT
-//   characteristics.name, characteristics.id, characteristic_reviews.value
-// FROM characteristics, characteristic_reviews
-// WHERE characteristics.product_id = ${num} AND characteristic_reviews.characteristic_id = characteristics.id
-
-// This creates average value for characteristics.quality.value
-// `SELECT AVG(value) AS "value" FROM characteristic_reviews`
-// 'SELECT AVG(value) AS "value" FROM characteristic_reviews, characteristics WHERE characteristic_reviews.characteristic_id = characteristics.id AND characteristics.product_id = $1'
-
 app.get('/reviews/meta/:product_id', async (req, res) => {
   const productId = req.params.product_id;
 
@@ -140,52 +111,52 @@ app.get('/reviews/meta/:product_id', async (req, res) => {
 
   const charUniqueIdString = 'SELECT id FROM characteristics WHERE characteristics.product_id = $1';
 
+  const getCharIds = 'SELECT id FROM characteristics WHERE characteristics.product_id = $1';
+
   const recommendedObj = await database.query(recommendStr, [productId]);
   const ratingsObj = await database.query(ratingString, [productId]);
   const characteristicNames = await database.query(characterNamesString, [productId]);
   const characterisiticUniqueIds = await database.query(charUniqueIdString, [productId]);
+  const charIdsAndValsQuery = await database.query(getCharIds, [productId]);
+
+  let str = '(';
+
+  for (let i = 0; i < charIdsAndValsQuery.rows.length; i++) {
+    if (i === charIdsAndValsQuery.rows.length - 1) {
+      str = str.concat(charIdsAndValsQuery.rows[i].id.toString(), ')');
+    } else {
+      str = str.concat(charIdsAndValsQuery.rows[i].id.toString(), ', ');
+    }
+  }
+
+  const avgCalcString = `SELECT characteristic_id, AVG(value) AS "value" FROM characteristic_reviews WHERE characteristic_reviews.characteristic_id IN ${str} GROUP BY characteristic_id`;
+
+  const avgs = await database.query(avgCalcString);
 
   const names = characteristicNames.rows;
   const ids = characterisiticUniqueIds.rows;
+  const vals = avgs.rows;
 
   const characteristics = {};
 
   for (let i = 0; i < names.length; i++) {
     characteristics[names[i].name] = {};
     characteristics[names[i].name].id = ids[i].id;
-    characteristics[names[i].name].value = 0;
+    characteristics[names[i].name].value = vals[i].value;
   }
 
-  // let valuesArr;
+  const metaObj = {
+    product_id: productId,
+    recommended: recommendedObj.rows[0].recommended,
+    ratings: ratingsObj.rows[0].ratings,
+    characteristics,
+  };
 
-  // ids.forEach((id) => {
-  //   const avgCalcString = `SELECT AVG(value) AS "value" FROM characteristic_reviews WHERE characteristic_reviews.characteristic_id = ${id}`;
-
-  //   database.query(
-  //     avgCalcString, (err, data) => {
-  //       if (err) {
-  //         res.sendStatus(500);
-  //       } else {
-  //         res.send(metaObj);
-  //       }
-  //     },
-  //   );
-  // });
-
-  // valuesArr(ids, (err, data) => {
-
-  //   if (err) {
-  //     res.sendStatus(500);
-  //   } else {
-  //     const metaObj = {
-  //       product_id: productId,
-  //       recommended: recommendedObj.rows[0].recommended,
-  //       ratings: ratingsObj.rows[0].ratings,
-  //       characteristics,
-  //     };
-  //     res.send(metaObj);
-  //   }
-  // });
+  try {
+    res.send(metaObj);
+  } catch (err) {
+    res.sendStatus(500);
+  }
 });
 
 //=============================================================
