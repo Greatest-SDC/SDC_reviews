@@ -3,6 +3,7 @@ const morgan = require('morgan');
 const axios = require('axios');
 const path = require('path');
 const database = require('../database');
+// const TOKEN = require('../config.js');
 
 const app = express();
 const port = 3000;
@@ -42,53 +43,10 @@ const reviewsResultsArrayBuilder = async (num, resultCount, sortBy, callback) =>
   callback(null, response);
 };
 
-app.get('/reviews/:product_id', (req, res) => {
-  let { page, count, sort } = req.body;
-  const productId = req.params.product_id;
+app.get('/reviews/meta/:product_id?', async (req, res) => {
+  const productId = req.query.product_id;
 
-  if (page === undefined) {
-    page = 0;
-  }
-
-  if (count === undefined) {
-    count = 5;
-  }
-
-  if (sort === undefined) {
-    sort = 'relevant';
-  }
-
-  const sortingFunc = (str) => {
-    if (str === 'helpful') {
-      return 'helpfulness DESC';
-    }
-
-    if (str === 'newest') {
-      return 'date DESC';
-    }
-
-    if (str === 'relevant') {
-      return 'helpfulness DESC, date, DESC';
-    }
-  };
-
-  reviewsResultsArrayBuilder(productId, count, sortingFunc(sort), (err, data) => {
-    if (err) {
-      res.sendStatus(500);
-    } else {
-      const builtQuery = {
-        product: productId,
-        page: page,
-        count: count,
-        results: data.rows,
-      };
-      res.send(builtQuery);
-    }
-  });
-});
-
-app.get('/reviews/meta/:product_id', async (req, res) => {
-  const productId = req.params.product_id;
+  console.log('productId: ', productId);
 
   const recommendStr = `SELECT JSON_BUILD_OBJECT(
     'false', COUNT(*) filter (WHERE NOT "recommend"),
@@ -158,6 +116,128 @@ app.get('/reviews/meta/:product_id', async (req, res) => {
     res.sendStatus(500);
   }
 });
+
+app.get('/reviews/:product_id:count?', (req, res) => {
+  let { page, count, sort } = req.params;
+  // const productId = req.params.product_id;
+  const productId = req.query.product_id;
+
+console.log('req.params: ', req.params);
+
+  if (page === undefined) {
+    page = 0;
+  }
+
+  if (count === undefined) {
+    count = 5;
+  }
+
+  if (sort === undefined) {
+    sort = 'relevant';
+  }
+
+  const sortingFunc = (str) => {
+    if (str === 'helpful') {
+      return 'helpfulness DESC';
+    }
+
+    if (str === 'newest') {
+      return 'date DESC';
+    }
+
+    if (str === 'relevant') {
+      return 'helpfulness DESC, date, DESC';
+    }
+  };
+
+  reviewsResultsArrayBuilder(productId, count, sortingFunc(sort), (err, data) => {
+    if (err) {
+      res.sendStatus(500);
+    } else {
+      const builtQuery = {
+        product: productId,
+        page: page,
+        count: count,
+        results: data.rows,
+      };
+      res.send(builtQuery);
+    }
+  });
+});
+
+// app.get('/reviews/meta/:product_id', async (req, res) => {
+//   const productId = req.query.product_id;
+
+//   console.log('productId: ', productId);
+
+//   const recommendStr = `SELECT JSON_BUILD_OBJECT(
+//     'false', COUNT(*) filter (WHERE NOT "recommend"),
+//     'true', COUNT(*) filter (WHERE "recommend")
+//   ) AS recommended
+//   FROM reviews
+//   WHERE product = $1`;
+
+//   const ratingString = `SELECT JSON_BUILD_OBJECT(
+//     '1', SUM(1),
+//     '2', SUM(2),
+//     '3', SUM(3),
+//     '4', SUM(4),
+//     '5', SUM(5)
+//   ) AS ratings
+//   FROM reviews
+//   WHERE product = $1`;
+
+//   const characterNamesString = 'SELECT name FROM characteristics WHERE characteristics.product_id = $1';
+
+//   const charUniqueIdString = 'SELECT id FROM characteristics WHERE characteristics.product_id = $1';
+
+//   const getCharIds = 'SELECT id FROM characteristics WHERE characteristics.product_id = $1';
+
+//   const recommendedObj = await database.query(recommendStr, [productId]);
+//   const ratingsObj = await database.query(ratingString, [productId]);
+//   const characteristicNames = await database.query(characterNamesString, [productId]);
+//   const characterisiticUniqueIds = await database.query(charUniqueIdString, [productId]);
+//   const charIdsAndValsQuery = await database.query(getCharIds, [productId]);
+
+//   let str = '(';
+
+//   for (let i = 0; i < charIdsAndValsQuery.rows.length; i++) {
+//     if (i === charIdsAndValsQuery.rows.length - 1) {
+//       str = str.concat(charIdsAndValsQuery.rows[i].id.toString(), ')');
+//     } else {
+//       str = str.concat(charIdsAndValsQuery.rows[i].id.toString(), ', ');
+//     }
+//   }
+
+//   const avgCalcString = `SELECT characteristic_id, AVG(value) AS "value" FROM characteristic_reviews WHERE characteristic_reviews.characteristic_id IN ${str} GROUP BY characteristic_id`;
+
+//   const avgs = await database.query(avgCalcString);
+
+//   const names = characteristicNames.rows;
+//   const ids = characterisiticUniqueIds.rows;
+//   const vals = avgs.rows;
+
+//   const characteristics = {};
+
+//   for (let i = 0; i < names.length; i++) {
+//     characteristics[names[i].name] = {};
+//     characteristics[names[i].name].id = ids[i].id;
+//     characteristics[names[i].name].value = vals[i].value;
+//   }
+
+//   const metaObj = {
+//     product_id: productId,
+//     recommended: recommendedObj.rows[0].recommended,
+//     ratings: ratingsObj.rows[0].ratings,
+//     characteristics,
+//   };
+
+//   try {
+//     res.send(metaObj);
+//   } catch (err) {
+//     res.sendStatus(500);
+//   }
+// });
 
 app.post('/reviews', async (req, res) => {
   const {
