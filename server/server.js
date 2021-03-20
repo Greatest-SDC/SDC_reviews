@@ -42,30 +42,34 @@ const reviewsResultsArrayBuilder = async (num, resultCount, sortBy, callback) =>
   callback(null, response);
 };
 
-const uniqueQualityIdFunc = async (names, ids) => {
-  ids.forEach((uniqId) => {
-    let avgCalcString = `SELECT AVG(value) AS "value" FROM characteristic_reviews WHERE characteristic_reviews.characteristic_id = ${uniqId.id}`;
+const uniqueQualityIdFunc = async (names, ids, callback) => {
+  const namesArr = names.rows;
+  const idArr = ids.rows;
+  let valuesArr;
 
-    database.query(
-      avgCalcString, (err, data) => {
-        if (err) {
-          res.sendStatus(500);
-        } else {
-          res.send(data.rows);
-        }
-      },
-    );
-  });
+  let obj = {};
 
-  let response;
+  for (let i = 0; i < namesArr.length; i++) {
+    obj[namesArr[i].name] = {};
+    obj[namesArr[i].name].id = idArr[i].id;
+  }
+
+  console.log('obj: ', obj);
 
   try {
-    response = await database.query(qualityId, [product]);
+    idArr.forEach(async (uniqId) => {
+      const avgCalcString = `SELECT AVG(value) AS "value" FROM characteristic_reviews WHERE characteristic_reviews.characteristic_id = ${uniqId.id}`;
+
+      const avg = await database.query(avgCalcString);
+
+      valuesArr = avg.rows;
+    });
   } catch (err) {
     console.log(err.stack);
   }
+  console.log('valuesArr: ', valuesArr);
 
-  callback(null, response);
+  callback(null, valuesArr);
 };
 
 app.get('/reviews/:product_id', (req, res) => {
@@ -160,11 +164,9 @@ app.get('/reviews/meta/:product_id', async (req, res) => {
     } else {
       const metaObj = {
         product_id: productId,
-        recommendedObj,
-        ratingsObj,
-        characteristics: {
-          data,
-        },
+        recommended: recommendedObj.rows[0].recommended,
+        ratings: ratingsObj.rows[0].ratings,
+        data,
       };
       res.send(metaObj);
     }
