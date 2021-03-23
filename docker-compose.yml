@@ -1,0 +1,21 @@
+version: '5.1'
+
+services:
+  db:
+    image: postgres
+    environment:
+      POSTGRES_USER: adamwhitman
+    expose:
+      - 5432
+
+  myapp:
+    build: .
+    image: myapp
+    command: npm start
+    environment:
+      APP_DB_HOST: db
+      APP_DB_USER: adamwhitman
+    expose:
+      - 3000
+    depends_on:
+      - db
