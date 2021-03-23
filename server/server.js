@@ -35,7 +35,7 @@ const reviewsResultsArrayBuilder = async (product, limit, sortBy, callback) => {
 };
 
 app.get('/reviews/meta/:product_id?', async (req, res) => {
-  const productId = req.query.product_id;
+  const productId = req.params.product_id;
 
   // console.log('productId: ', productId);
   // console.log('req.params: ', req.params);
@@ -61,38 +61,51 @@ app.get('/reviews/meta/:product_id?', async (req, res) => {
 
   const charUniqueIdString = 'SELECT id FROM characteristics WHERE characteristics.product_id = $1';
 
+  const getCharIds = 'SELECT id FROM characteristics WHERE characteristics.product_id = $1';
+
   const recommendedObj = await database.query(recommendStr, [productId]);
   const ratingsObj = await database.query(ratingString, [productId]);
   const characteristicNames = await database.query(characterNamesString, [productId]);
   const characterisiticUniqueIds = await database.query(charUniqueIdString, [productId]);
-  // const charIdsAndValsQuery = await database.query(getCharIds, [productId]);
+  const charIdsAndValsQuery = await database.query(getCharIds, [productId]);
 
-  const charIdsAndValsQuery = async () => {
-    const getCharIds = 'SELECT id FROM characteristics WHERE characteristics.product_id = $1';
+  let str = '(';
 
-    try {
-      let str = '(';
-
-      const ids = await database.query(getCharIds, [productId]);
-
-      console.log('ids: ', ids);
-      for (let i = 0; i < ids.rows.length; i++) {
-        if (i === ids.rows.length - 1) {
-          str = str.concat(ids.rows[i].id.toString(), ')');
-        } else {
-          str = str.concat(ids.rows[i].id.toString(), ', ');
-        }
-      }
-
-      return str;
-    } catch (err) {
-      console.error(err.stack);
+  for (let i = 0; i < charIdsAndValsQuery.rows.length; i++) {
+    if (i === charIdsAndValsQuery.rows.length - 1) {
+      str = str.concat(charIdsAndValsQuery.rows[i].id.toString(), ')');
+    } else {
+      str = str.concat(charIdsAndValsQuery.rows[i].id.toString(), ', ');
     }
-  };
+  }
 
-  console.log('charIdsAndValsQuery: ', charIdsAndValsQuery());
+  // const charIdsAndValsQuery = async () => {
+  //   const getCharIds = 'SELECT id FROM characteristics WHERE characteristics.product_id = $1';
 
-  const avgCalcString = `SELECT characteristic_id, AVG(value) AS "value" FROM characteristic_reviews WHERE characteristic_reviews.characteristic_id IN ${charIdsAndValsQuery()} GROUP BY characteristic_id`;
+  //   try {
+  //     let str = '(';
+
+  //     const ids = await database.query(getCharIds, [productId]);
+
+  //     console.log('ids: ', ids);
+
+  //     for (let i = 0; i < ids.rows.length; i++) {
+  //       if (i === ids.rows.length - 1) {
+  //         str = str.concat(ids.rows[i].id.toString(), ')');
+  //       } else {
+  //         str = str.concat(ids.rows[i].id.toString(), ', ');
+  //       }
+  //     }
+
+  //     return str;
+  //   } catch (err) {
+  //     console.error(err.stack);
+  //   }
+  // };
+
+  // console.log('charIdsAndValsQuery: ', charIdsAndValsQuery());
+
+  const avgCalcString = `SELECT characteristic_id, AVG(value) AS "value" FROM characteristic_reviews WHERE characteristic_reviews.characteristic_id IN ${str} GROUP BY characteristic_id`;
 
   const avgs = await database.query(avgCalcString);
 
