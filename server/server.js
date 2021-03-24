@@ -34,11 +34,8 @@ const reviewsResultsArrayBuilder = async (product, limit, sortBy, callback) => {
   }
 };
 
-app.get('/reviews/meta/:product_id?', async (req, res) => {
-  const productId = req.params.product_id;
-
-  // console.log('productId: ', productId);
-  // console.log('req.params: ', req.params);
+app.get('/reviews/meta?:product_id', async (req, res) => {
+  const productId = req.query.product_id;
 
   const recommendStr = `SELECT JSON_BUILD_OBJECT(
     'false', COUNT(*) filter (WHERE NOT "recommend"),
@@ -79,32 +76,6 @@ app.get('/reviews/meta/:product_id?', async (req, res) => {
     }
   }
 
-  // const charIdsAndValsQuery = async () => {
-  //   const getCharIds = 'SELECT id FROM characteristics WHERE characteristics.product_id = $1';
-
-  //   try {
-  //     let str = '(';
-
-  //     const ids = await database.query(getCharIds, [productId]);
-
-  //     console.log('ids: ', ids);
-
-  //     for (let i = 0; i < ids.rows.length; i++) {
-  //       if (i === ids.rows.length - 1) {
-  //         str = str.concat(ids.rows[i].id.toString(), ')');
-  //       } else {
-  //         str = str.concat(ids.rows[i].id.toString(), ', ');
-  //       }
-  //     }
-
-  //     return str;
-  //   } catch (err) {
-  //     console.error(err.stack);
-  //   }
-  // };
-
-  // console.log('charIdsAndValsQuery: ', charIdsAndValsQuery());
-
   const avgCalcString = `SELECT characteristic_id, AVG(value) AS "value" FROM characteristic_reviews WHERE characteristic_reviews.characteristic_id IN ${str} GROUP BY characteristic_id`;
 
   const avgs = await database.query(avgCalcString);
@@ -135,7 +106,7 @@ app.get('/reviews/meta/:product_id?', async (req, res) => {
   }
 });
 
-app.get('/reviews/:product_id?', (req, res) => {
+app.get('/reviews?:product_id', (req, res) => {
   const productId = req.query.product_id;
   const count = req.query.count || 5;
   const sort = req.query.sort || 'helpful';

@@ -3,3 +3,4 @@ node_modules
 reviewsData.sql
 postgresAWSkey.pem
 sdcServerKey.pem
+sdcReviewsData.sql
