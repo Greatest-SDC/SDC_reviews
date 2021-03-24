@@ -34,6 +34,14 @@ const reviewsResultsArrayBuilder = async (product, limit, sortBy, callback) => {
   }
 };
 
+app.get ('http://ec2-52-40-76-6.us-west-2.compute.amazonaws.com:3000/loaderio-bb647a23038b7d3beeaa0efaf6f69349/', (req, res) => {
+  try {
+    res.sendStatus(200);
+  } catch (err) {
+    res.sendStatus(500);
+  }
+});
+
 app.get('/reviews/meta?:product_id', async (req, res) => {
   const productId = req.query.product_id;
 
