@@ -10,6 +10,7 @@ const port = 3000;
 
 app.use(morgan('dev'));
 app.use(express.json());
+app.use(express.static('public'));
 
 const reviewsResultsArrayBuilder = async (product, limit, sortBy, callback) => {
   const resultsArr = `SELECT reviews.review_id, reviews.rating, reviews.summary, reviews.recommend, reviews.response, reviews.body, reviews.date, reviews.reviewer_name, reviews.helpfulness,
@@ -33,14 +34,6 @@ const reviewsResultsArrayBuilder = async (product, limit, sortBy, callback) => {
     console.error(err.stack);
   }
 };
-
-app.get ('/loaderio-bb647a23038b7d3beeaa0efaf6f69349/', (req, res) => {
-  try {
-    res.sendStatus(200);
-  } catch (err) {
-    res.sendStatus(500);
-  }
-});
 
 app.get('/reviews/meta?:product_id', async (req, res) => {
   const productId = req.query.product_id;
