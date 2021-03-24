@@ -34,7 +34,7 @@ const reviewsResultsArrayBuilder = async (product, limit, sortBy, callback) => {
   }
 };
 
-app.get ('http://ec2-52-40-76-6.us-west-2.compute.amazonaws.com:3000/loaderio-bb647a23038b7d3beeaa0efaf6f69349/', (req, res) => {
+app.get ('/loaderio-bb647a23038b7d3beeaa0efaf6f69349/', (req, res) => {
   try {
     res.sendStatus(200);
   } catch (err) {
