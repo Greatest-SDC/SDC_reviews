@@ -10,7 +10,7 @@ const { Client } = require('pg');
 
 const client = new Client({
   user: 'adamwhitman',
-  host: 'ec2-54-212-7-107.us-west-2.compute.amazonaws.com',
+  host: '34.222.144.23',
   database: 'postgres',
   password: 'Freemind4@',
   port: 5432,
