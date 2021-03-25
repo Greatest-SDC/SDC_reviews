@@ -143,7 +143,6 @@ app.get('/reviews?:product_id', (req, res) => {
 });
 
 app.post('/reviews', async (req, res) => {
-  console.log('req.body: ', req.body);
   const {
     product_id,
     rating,
