@@ -4,3 +4,4 @@ reviewsData.sql
 postgresAWSkey.pem
 sdcServerKey.pem
 sdcReviewsData.sql
+sdcNGINX.pem
