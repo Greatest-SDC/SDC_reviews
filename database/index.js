@@ -1,6 +1,6 @@
-const { Client } = require('pg');
+const { Pool } = require('pg');
 
-// const client = new Client({
+// const pool = new Pool({
 //   user: 'adamwhitman',
 //   host: 'localhost',
 //   // host: 'host.docker.internal',
@@ -8,15 +8,15 @@ const { Client } = require('pg');
 //   port: 5432,
 // });
 
-const client = new Client({
+const pool = new Pool({
   user: 'adamwhitman',
-  host: '34.222.144.23',
+  host: '172.31.29.176',
   database: 'postgres',
   password: 'Freemind4@',
   port: 5432,
 });
 
-client.connect((err) => {
+pool.connect((err) => {
   if (err) {
     console.log(err);
   } else {
@@ -24,4 +24,4 @@ client.connect((err) => {
   }
 });
 
-module.exports = client;
+module.exports = pool;
