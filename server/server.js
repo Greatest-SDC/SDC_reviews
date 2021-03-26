@@ -1,5 +1,4 @@
 const express = require('express');
-const morgan = require('morgan');
 const axios = require('axios');
 const path = require('path');
 const database = require('../database');
@@ -8,7 +7,6 @@ const database = require('../database');
 const app = express();
 const port = 3000;
 
-app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.static('public'));
 
